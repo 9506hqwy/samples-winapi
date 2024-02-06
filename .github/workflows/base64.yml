@@ -1,0 +1,33 @@
+name: base64
+
+on:
+  push:
+    branches: [ main ]
+    tags-ignore: [ '**' ]
+    paths: [ 'base64/**' ]
+  workflow_dispatch:
+
+env:
+  BIN_NAME: base64
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build
+      shell: cmd
+      run: |
+        SET PATH=%PATH%;C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64
+        CALL "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        .\build.bat %BIN_NAME%
+
+    - name: Create Artifacts
+      run: |
+        New-Item -Path '.\artifacts' -ItemType 'Directory' -Force
+        $exe = Get-Item .\build\${BIN_NAME}.exe
+        $VERSION = $exe.VersionInfo.FileVersionRaw.ToString()
+        Compress-Archive -Path .\build\${BIN_NAME}.exe -DestinationPath ".\artifacts\${BIN_NAME}-${VERSION}.zip"
