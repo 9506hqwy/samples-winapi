@@ -28,6 +28,6 @@ jobs:
     - name: Create Artifacts
       run: |
         New-Item -Path '.\artifacts' -ItemType 'Directory' -Force
-        $exe = Get-Item .\build\${BIN_NAME}.exe
+        $exe = Get-Item .\build\${env:BIN_NAME}.exe
         $VERSION = $exe.VersionInfo.FileVersionRaw.ToString()
-        Compress-Archive -Path .\build\${BIN_NAME}.exe -DestinationPath ".\artifacts\${BIN_NAME}-${VERSION}.zip"
+        Compress-Archive -Path .\build\${envBIN_NAME}.exe -DestinationPath ".\artifacts\${envBIN_NAME}-${VERSION}.zip"
