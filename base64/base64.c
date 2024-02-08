@@ -1,54 +1,55 @@
 #pragma comment(lib, "Crypt32")
+#pragma comment(lib, "Shell32")
 #pragma comment(lib, "Shlwapi")
 
 #pragma warning(once : 4710)
 #pragma warning(once : 4711)
 
-#include <fcntl.h>
-#include <io.h>
-#include <shlwapi.h>
-#include <stdio.h>
-#include <string.h>
-#include <wincrypt.h>
 #include <windows.h>
+#include <shellapi.h>
+#include <shlwapi.h>
+#include <strsafe.h>
+#include <wincrypt.h>
 
-int DecodeB64(char *);
-int DecodeString(char *, size_t, unsigned char **, size_t *);
-int EncodeB64(char *, int);
-int EncodeString(unsigned char *, size_t, char **, size_t *);
-int GetFileContent(FILE *, unsigned char **, size_t *);
-int RemoveLF(unsigned char *, size_t *);
-int WrapWrite(unsigned char *, size_t, int);
+int DecodeB64(LPSTR);
+BOOL DecodeString(HANDLE, LPCSTR, DWORD, BYTE **, DWORD *);
+int EncodeB64(LPSTR, int);
+BOOL EncodeString(HANDLE, BYTE *, DWORD, LPSTR *, DWORD *);
+BOOL GetFileContent(HANDLE, HANDLE, BYTE **, SIZE_T *);
+BOOL RemoveLF(BYTE *, SIZE_T *);
+BOOL WrapWrite(BYTE *, DWORD, int);
+void WriteStdErrorA(LPCSTR, ...);
+void WriteLastError(void);
 
 int main(int argc, char *argv[])
 {
     BOOL decode = FALSE;
     int width = 76;
-    char *filePath = NULL;
+    LPSTR filePath = NULL;
 
-    char **arg = NULL;
-    for (arg = argv + 1; arg - argv < argc; arg += 1)
+    LPSTR *arg = NULL;
+    for (arg = argv + 1; (arg - argv) < argc; arg += 1)
     {
         if (*arg[0] != '-')
         {
             break;
         }
-        else if (!strcmp(*arg, "-d"))
+        else if (!StrCmpA(*arg, "-d"))
         {
             decode = TRUE;
         }
-        else if (!strcmp(*arg, "-w"))
+        else if (!StrCmpA(*arg, "-w"))
         {
             arg += 1;
             if (!StrToIntExA(*arg, STIF_DEFAULT, &width) || width < 0)
             {
-                fprintf(stderr, "Error: invalid value -w '%s'\n", *arg);
+                WriteStdErrorA("Error: invalid value -w '%s'\n", *arg);
                 return 1;
             }
         }
         else
         {
-            fprintf(stderr, "Error: unknown option '%s'\n", *arg);
+            WriteStdErrorA("Error: unknown option '%s'\n", *arg);
             return 1;
         }
     }
@@ -61,50 +62,49 @@ int main(int argc, char *argv[])
     return decode ? DecodeB64(filePath) : EncodeB64(filePath, width);
 }
 
-int DecodeB64(char *filePath)
+int DecodeB64(LPSTR filePath)
 {
     int exitCode = 0;
-    FILE *fp = stdin;
-    unsigned char *content = NULL;
-    unsigned char *decoded = NULL;
+    HANDLE fp = GetStdHandle(STD_INPUT_HANDLE);
+    BYTE *content = NULL;
+    BYTE *decoded = NULL;
 
-    if (filePath == NULL)
+    if (filePath != NULL)
     {
-        _setmode(_fileno(stdin), _O_BINARY);
-    }
-    else
-    {
-        fp = fopen(filePath, "rb");
-        if (fp == NULL)
+        fp = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (fp == INVALID_HANDLE_VALUE)
         {
-            fprintf(stderr, "%s: %s\n", strerror(errno), filePath);
+            WriteLastError();
             exitCode = 2;
             goto END;
         }
     }
 
-    size_t fileLength = 0;
-    if (GetFileContent(fp, &content, &fileLength))
+    HANDLE heap = HeapCreate(0, 0, 0);
+
+    DWORD fileLength = 0;
+    if (!GetFileContent(heap, fp, &content, (SIZE_T *)&fileLength))
     {
-        fprintf(stderr, "%s: %s\n", strerror(errno), filePath);
+        WriteLastError();
         exitCode = 3;
         goto END;
     }
 
-    RemoveLF(content, &fileLength);
+    RemoveLF(content, (SIZE_T *)&fileLength);
 
-    size_t decodedLength = 0;
-    if (DecodeString((char *)content, fileLength, &decoded, &decodedLength))
+    DWORD decodedLength = 0;
+    if (!DecodeString(heap, (LPCSTR)content, fileLength, &decoded, &decodedLength))
     {
-        fprintf(stderr, "Error: decode '%s' (%lu)\n", content, GetLastError());
+        WriteLastError();
         exitCode = 4;
         goto END;
     }
 
-    _setmode(_fileno(stdout), _O_BINARY);
-    if (!fwrite(decoded, sizeof(unsigned char), decodedLength, stdout))
+    HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD written = 0;
+    if (!WriteFile(out, decoded, lstrlenA((LPCSTR)decoded) * sizeof(BYTE), &written, NULL))
     {
-        fprintf(stderr, "%s: %s\n", strerror(errno), "stdout");
+        WriteLastError();
         exitCode = 5;
         goto END;
     }
@@ -114,64 +114,63 @@ int DecodeB64(char *filePath)
 END:
     if (decoded != NULL)
     {
-        free(decoded);
+        HeapFree(heap, 0, decoded);
     }
 
     if (content != NULL)
     {
-        free(content);
+        HeapFree(heap, 0, content);
     }
 
-    if (fp != NULL && fp != stdin)
+    if (fp != INVALID_HANDLE_VALUE && filePath != NULL)
     {
-        fclose(fp);
+        CloseHandle(fp);
     }
+
+    HeapDestroy(heap);
 
     return exitCode;
 }
 
-int EncodeB64(char *filePath, int width)
+int EncodeB64(LPSTR filePath, int width)
 {
     int exitCode = 0;
-    FILE *fp = stdin;
-    unsigned char *content = NULL;
-    unsigned char *encoded = NULL;
+    HANDLE fp = GetStdHandle(STD_INPUT_HANDLE);
+    BYTE *content = NULL;
+    BYTE *encoded = NULL;
 
-    if (filePath == NULL)
+    if (filePath != NULL)
     {
-        _setmode(_fileno(stdin), _O_BINARY);
-    }
-    else
-    {
-        fp = fopen(filePath, "rb");
-        if (fp == NULL)
+        fp = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (fp == INVALID_HANDLE_VALUE)
         {
-            fprintf(stderr, "%s: %s\n", strerror(errno), filePath);
+            WriteLastError();
             exitCode = 2;
             goto END;
         }
     }
 
-    size_t fileLength = 0;
-    if (GetFileContent(fp, &content, &fileLength))
+    HANDLE heap = HeapCreate(0, 0, 0);
+
+    SIZE_T fileLength = 0;
+    if (!GetFileContent(heap, fp, &content, &fileLength))
     {
-        fprintf(stderr, "%s: %s\n", strerror(errno), filePath);
+        WriteLastError();
         exitCode = 3;
         goto END;
     }
 
-    size_t encodedLength = 0;
-    if (EncodeString(content, fileLength, (char **)&encoded, &encodedLength))
+    DWORD encodedLength = 0;
+    if (!EncodeString(heap, content, (DWORD)fileLength, (LPSTR *)&encoded, &encodedLength))
     {
-        fprintf(stderr, "Error: encode '%s' (%lu)\n", content, GetLastError());
+        WriteLastError();
         exitCode = 4;
         goto END;
     }
 
-    _setmode(_fileno(stdout), _O_BINARY);
-    if (WrapWrite(encoded, encodedLength, width))
+    if (!WrapWrite(encoded, encodedLength, width))
     {
-        fprintf(stderr, "%s: %s\n", strerror(errno), "stdout");
+        WriteLastError();
         exitCode = 5;
         goto END;
     }
@@ -181,178 +180,201 @@ int EncodeB64(char *filePath, int width)
 END:
     if (encoded != NULL)
     {
-        free(encoded);
+        HeapFree(heap, 0, encoded);
     }
 
     if (content != NULL)
     {
-        free(content);
+        HeapFree(heap, 0, content);
     }
 
-    if (fp != NULL && fp != stdin)
+    if (fp != INVALID_HANDLE_VALUE && filePath != NULL)
     {
-        fclose(fp);
+        CloseHandle(fp);
     }
+
+    HeapDestroy(heap);
 
     return exitCode;
 }
 
-int DecodeString(char *source, size_t sourceLength, unsigned char **decoded, size_t *decodedLenth)
+BOOL DecodeString(HANDLE heap, LPCSTR source, DWORD sourceLength, BYTE **decoded, DWORD *decodedLenth)
 {
     *decoded = NULL;
 
     DWORD flags = CRYPT_STRING_BASE64;
 
     *decodedLenth = 0;
-    if (!CryptStringToBinaryA(source, (DWORD)sourceLength, flags, NULL, (DWORD *)decodedLenth, NULL, NULL))
+    if (!CryptStringToBinaryA(source, sourceLength, flags, NULL, decodedLenth, NULL, NULL))
     {
-        return 1;
+        return FALSE;
     }
 
-    *decoded = (unsigned char *)calloc(*decodedLenth, sizeof(unsigned char));
+    *decoded = (BYTE *)HeapAlloc(heap, HEAP_ZERO_MEMORY, (*decodedLenth) * sizeof(BYTE));
     if (*decoded == NULL)
     {
-        return 1;
+        return FALSE;
     }
 
-    if (!CryptStringToBinaryA(source, (DWORD)sourceLength, flags, *decoded, (DWORD *)decodedLenth, NULL, NULL))
+    if (!CryptStringToBinaryA(source, sourceLength, flags, *decoded, decodedLenth, NULL, NULL))
     {
-        free(*decoded);
+        HeapFree(heap, 0, *decoded);
         *decoded = NULL;
-        return 1;
+        return FALSE;
     }
 
-    return 0;
+    return TRUE;
 }
 
-int EncodeString(unsigned char *source, size_t sourceLength, char **encoded, size_t *encodedLength)
+BOOL EncodeString(HANDLE heap, BYTE *source, DWORD sourceLength, LPSTR *encoded, DWORD *encodedLength)
 {
     *encoded = NULL;
 
     DWORD flags = CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF;
 
     *encodedLength = 0;
-    if (!CryptBinaryToStringA(source, (DWORD)sourceLength, flags, NULL, (DWORD *)encodedLength))
+    if (!CryptBinaryToStringA(source, sourceLength, flags, NULL, encodedLength))
     {
-        return 1;
+        return FALSE;
     }
 
-    *encoded = (char *)calloc(*encodedLength, sizeof(char));
+    *encoded = (LPSTR)HeapAlloc(heap, HEAP_ZERO_MEMORY, (*encodedLength) * sizeof(CHAR));
     if (*encoded == NULL)
     {
-        return 1;
+        return FALSE;
     }
 
-    if (!CryptBinaryToStringA(source, (DWORD)sourceLength, flags, *encoded, (DWORD *)encodedLength))
+    if (!CryptBinaryToStringA(source, sourceLength, flags, *encoded, encodedLength))
     {
-        free(*encoded);
+        HeapFree(heap, 0, *encoded);
         *encoded = NULL;
-        return 1;
+        return FALSE;
     }
 
-    return 0;
+    return TRUE;
 }
 
-int GetFileContent(FILE *fp, unsigned char **content, size_t *fileLength)
+BOOL GetFileContent(HANDLE heap, HANDLE fp, BYTE **content, SIZE_T *fileLength)
 {
     *fileLength = 0;
-    *content = (unsigned char *)calloc(1, sizeof(unsigned char)); // with null terminate.
+    *content = (BYTE *)HeapAlloc(heap, HEAP_ZERO_MEMORY, sizeof(BYTE)); // with null terminate.
     if (*content == NULL)
     {
-        return 1;
+        return FALSE;
     }
 
-    size_t size = 0;
-    unsigned char buffer[8192] = {0};
-    while (size = fread(&buffer, sizeof(unsigned char), 8192, fp))
+    DWORD size = 0;
+    BYTE buffer[8192] = {0};
+    while (ReadFile(fp, &buffer, 8192 * sizeof(BYTE), &size, NULL))
     {
-        // realloc always return NULL ?
-        unsigned char *tmp =
-            (unsigned char *)calloc((*fileLength) + size + 1, sizeof(unsigned char)); // with null terminate.
-        if (tmp == NULL)
+        if (size <= 0)
         {
-            free(*content);
-            *content = NULL;
-            return 1;
+            break;
         }
 
-        memmove(tmp, *content, *fileLength);
-        memmove(tmp + *fileLength, &buffer, size);
+        SIZE_T count = (*fileLength) + size + 1; // with null terminate.
+        BYTE *tmp = (BYTE *)HeapAlloc(heap, HEAP_ZERO_MEMORY, count * sizeof(BYTE));
+        if (tmp == NULL)
+        {
+            HeapFree(heap, 0, *content);
+            *content = NULL;
+            return FALSE;
+        }
+
+        MoveMemory(tmp, *content, (*fileLength) * sizeof(BYTE));
+        MoveMemory(tmp + *fileLength, &buffer, size * sizeof(BYTE));
         tmp[(*fileLength) + size] = '\0';
 
-        free(*content);
+        HeapFree(heap, 0, *content);
         *content = tmp;
 
         (*fileLength) += size;
 
-        memset(&buffer, 0, 8192);
+        ZeroMemory(&buffer, 8192 * sizeof(BYTE));
     }
 
-    return 0;
+    return TRUE;
 }
 
-/*
-// stdin is 8kiB buffering ?
-// setvbuf does not be affected ?
-int GetFileLength(FILE *fp, long *length)
+BOOL RemoveLF(BYTE *content, SIZE_T *contentLength)
 {
-    if (fseek(fp, 0, SEEK_END))
+    BYTE *lf = NULL;
+
+    while (lf = (BYTE *)StrChrA((PCSTR)content, '\n'))
     {
-        return 1;
-    }
-
-    *length = ftell(fp);
-    if (*length < 0)
-    {
-        return 1;
-    }
-
-    if (fseek(fp, 0, SEEK_SET))
-    {
-        return 1;
-    }
-
-    return 0;
-}
-*/
-
-int RemoveLF(unsigned char *content, size_t *contentLength)
-{
-    unsigned char *lf = NULL;
-
-    while (lf = (unsigned char *)strchr((char *)content, '\n'))
-    {
-        unsigned char *next = lf + 1;
-        size_t restLen = (*contentLength) - (next - content) + 1; // with null terminate.
-        memmove(lf, next, restLen);
+        BYTE *next = lf + 1;
+        SIZE_T restLen = (*contentLength) - (next - content) + sizeof(BYTE); // with null terminate.
+        MoveMemory(lf, next, restLen);
         (*contentLength)--;
     }
 
-    return 0;
+    return TRUE;
 }
 
-int WrapWrite(unsigned char *text, size_t textLength, int width)
+BOOL WrapWrite(BYTE *text, DWORD textLength, int width)
 {
-    size_t chunk = width > 0 ? width : textLength;
-    for (unsigned char *output = text; (size_t)(output - text) < textLength; output += chunk)
+    HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    DWORD chunk = width > 0 ? width : textLength;
+    DWORD written = 0;
+    for (BYTE *output = text; (DWORD)(output - text) < textLength; output += chunk)
     {
-        size_t len = strlen((char *)output);
+        DWORD len = lstrlenA((LPCSTR)output);
         len = len < chunk ? len : chunk;
 
-        if (!fwrite(output, sizeof(unsigned char), len, stdout))
+        if (!WriteFile(out, output, len * sizeof(BYTE), &written, NULL))
         {
-            return 1;
+            return FALSE;
         }
 
         if (width > 0 && len == chunk)
         {
             // only '\n' char because of avoiding occurring error on Linux.
-            if (!fwrite("\n", sizeof(unsigned char), 1, stdout))
+            if (!WriteFile(out, "\n", sizeof(BYTE), &written, NULL))
             {
-                return 1;
+                return FALSE;
             }
         }
     }
 
-    return 0;
+    return TRUE;
+}
+
+void WriteStdErrorA(LPCSTR format, ...)
+{
+    CHAR msg[1024] = {0};
+
+    va_list args = NULL;
+    va_start(args, format);
+
+    HRESULT ret = StringCbVPrintfA(msg, 1024, format, args);
+    if (FAILED(ret))
+    {
+        va_end(args);
+        return;
+    }
+
+    va_end(args);
+
+    HANDLE err = GetStdHandle(STD_ERROR_HANDLE);
+    DWORD written = 0;
+    WriteFile(err, msg, lstrlenA(msg) * sizeof(CHAR), &written, NULL);
+}
+
+void WriteLastError(void)
+{
+    DWORD flags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
+    DWORD code = GetLastError();
+    LPTSTR msg = NULL;
+
+    if (!FormatMessage(flags, NULL, code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&msg, 0, NULL))
+    {
+        return;
+    }
+
+    HANDLE err = GetStdHandle(STD_ERROR_HANDLE);
+    DWORD written = 0;
+    WriteFile(err, msg, lstrlen(msg) * sizeof(TCHAR), &written, NULL);
+
+    LocalFree(msg);
 }
