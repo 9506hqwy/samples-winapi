@@ -8,8 +8,8 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <shlwapi.h>
-#include <strsafe.h>
 #include <wincrypt.h>
+#include "../common/console.h"
 
 int DecodeB64(LPSTR);
 BOOL DecodeString(HANDLE, LPCSTR, DWORD, BYTE **, DWORD *);
@@ -18,8 +18,6 @@ BOOL EncodeString(HANDLE, BYTE *, DWORD, LPSTR *, DWORD *);
 BOOL GetFileContent(HANDLE, HANDLE, BYTE **, SIZE_T *);
 BOOL RemoveLF(BYTE *, SIZE_T *);
 BOOL WrapWrite(BYTE *, DWORD, int);
-void WriteStdErrorA(LPCSTR, ...);
-void WriteLastError(void);
 
 int main(int argc, char *argv[])
 {
@@ -43,13 +41,13 @@ int main(int argc, char *argv[])
             arg += 1;
             if (!StrToIntExA(*arg, STIF_DEFAULT, &width) || width < 0)
             {
-                WriteStdErrorA("Error: invalid value -w '%s'\n", *arg);
+                WriteStdErr("Error: invalid value -w '%s'\n", *arg);
                 return 1;
             }
         }
         else
         {
-            WriteStdErrorA("Error: unknown option '%s'\n", *arg);
+            WriteStdErr("Error: unknown option '%s'\n", *arg);
             return 1;
         }
     }
@@ -66,6 +64,7 @@ int DecodeB64(LPSTR filePath)
 {
     int exitCode = 0;
     HANDLE fp = GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE heap = NULL;
     BYTE *content = NULL;
     BYTE *decoded = NULL;
 
@@ -74,18 +73,18 @@ int DecodeB64(LPSTR filePath)
         fp = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (fp == INVALID_HANDLE_VALUE)
         {
-            WriteLastError();
+            WriteLastSystemError();
             exitCode = 2;
             goto END;
         }
     }
 
-    HANDLE heap = HeapCreate(0, 0, 0);
+    heap = HeapCreate(0, 0, 0);
 
     DWORD fileLength = 0;
     if (!GetFileContent(heap, fp, &content, (SIZE_T *)&fileLength))
     {
-        WriteLastError();
+        WriteLastSystemError();
         exitCode = 3;
         goto END;
     }
@@ -95,7 +94,7 @@ int DecodeB64(LPSTR filePath)
     DWORD decodedLength = 0;
     if (!DecodeString(heap, (LPCSTR)content, fileLength, &decoded, &decodedLength))
     {
-        WriteLastError();
+        WriteLastSystemError();
         exitCode = 4;
         goto END;
     }
@@ -104,7 +103,7 @@ int DecodeB64(LPSTR filePath)
     DWORD written = 0;
     if (!WriteFile(out, decoded, lstrlenA((LPCSTR)decoded) * sizeof(BYTE), &written, NULL))
     {
-        WriteLastError();
+        WriteLastSystemError();
         exitCode = 5;
         goto END;
     }
@@ -136,6 +135,7 @@ int EncodeB64(LPSTR filePath, int width)
 {
     int exitCode = 0;
     HANDLE fp = GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE heap = NULL;
     BYTE *content = NULL;
     BYTE *encoded = NULL;
 
@@ -144,18 +144,18 @@ int EncodeB64(LPSTR filePath, int width)
         fp = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (fp == INVALID_HANDLE_VALUE)
         {
-            WriteLastError();
+            WriteLastSystemError();
             exitCode = 2;
             goto END;
         }
     }
 
-    HANDLE heap = HeapCreate(0, 0, 0);
+    heap = HeapCreate(0, 0, 0);
 
     SIZE_T fileLength = 0;
     if (!GetFileContent(heap, fp, &content, &fileLength))
     {
-        WriteLastError();
+        WriteLastSystemError();
         exitCode = 3;
         goto END;
     }
@@ -163,14 +163,14 @@ int EncodeB64(LPSTR filePath, int width)
     DWORD encodedLength = 0;
     if (!EncodeString(heap, content, (DWORD)fileLength, (LPSTR *)&encoded, &encodedLength))
     {
-        WriteLastError();
+        WriteLastSystemError();
         exitCode = 4;
         goto END;
     }
 
     if (!WrapWrite(encoded, encodedLength, width))
     {
-        WriteLastError();
+        WriteLastSystemError();
         exitCode = 5;
         goto END;
     }
@@ -338,43 +338,4 @@ BOOL WrapWrite(BYTE *text, DWORD textLength, int width)
     }
 
     return TRUE;
-}
-
-void WriteStdErrorA(LPCSTR format, ...)
-{
-    CHAR msg[1024] = {0};
-
-    va_list args = NULL;
-    va_start(args, format);
-
-    HRESULT ret = StringCbVPrintfA(msg, 1024, format, args);
-    if (FAILED(ret))
-    {
-        va_end(args);
-        return;
-    }
-
-    va_end(args);
-
-    HANDLE err = GetStdHandle(STD_ERROR_HANDLE);
-    DWORD written = 0;
-    WriteFile(err, msg, lstrlenA(msg) * sizeof(CHAR), &written, NULL);
-}
-
-void WriteLastError(void)
-{
-    DWORD flags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
-    DWORD code = GetLastError();
-    LPTSTR msg = NULL;
-
-    if (!FormatMessage(flags, NULL, code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&msg, 0, NULL))
-    {
-        return;
-    }
-
-    HANDLE err = GetStdHandle(STD_ERROR_HANDLE);
-    DWORD written = 0;
-    WriteFile(err, msg, lstrlen(msg) * sizeof(TCHAR), &written, NULL);
-
-    LocalFree(msg);
 }

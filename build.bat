@@ -16,13 +16,21 @@ mkdir build
 
 pushd build
 
-rc.exe /v /w /nologo "..\%1\%1.rc"
+cl.exe /O2 /c /nologo /Wall "..\common\console.c"
 if errorlevel 1 (
+    popd
     exit /B %ERRORLEVEL%
 )
 
-cl.exe /O2 /nologo /Wall "..\%1\%1.res" "..\%1\%1.c"
+rc.exe /v /w /nologo "..\%1\%1.rc"
 if errorlevel 1 (
+    popd
+    exit /B %ERRORLEVEL%
+)
+
+cl.exe /O2 /nologo /Wall /Fe"%1.exe" ".\console.obj"  "..\%1\%1.res" "..\%1\%1.c"
+if errorlevel 1 (
+    popd
     exit /B %ERRORLEVEL%
 )
 
