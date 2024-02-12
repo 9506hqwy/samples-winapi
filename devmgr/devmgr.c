@@ -14,6 +14,7 @@
 #include <shlwapi.h>
 #include <tchar.h>
 #include "../common/console.h"
+#include "../common/string.h"
 
 int EnumerateEnumerators(HANDLE);
 int EnumerateIdList(HANDLE, LPTSTR);
@@ -794,22 +795,9 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
         WriteStdOut(_T("%u\n"), *(BYTE *)value);
         break;
     case DEVPROP_TYPE_STRING:
-        int len = WideCharToMultiByte(CP_ACP, WC_COMPOSITECHECK, (LPCWCH)value, -1, NULL, 0, NULL, NULL);
-        if (len == 0)
+        LPSTR mb = NULL;
+        if (!WideToMB(heap, (LPCWCH)value, &mb))
         {
-            return FALSE;
-        }
-
-        LPSTR mb = (LPSTR)HeapAlloc(heap, HEAP_ZERO_MEMORY, len * sizeof(CHAR));
-        if (mb == NULL)
-        {
-            return FALSE;
-        }
-
-        len = WideCharToMultiByte(CP_ACP, WC_COMPOSITECHECK, (LPCWCH)value, -1, mb, len, NULL, NULL);
-        if (len == 0)
-        {
-            HeapFree(heap, 0, mb);
             return FALSE;
         }
 

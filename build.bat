@@ -22,13 +22,19 @@ if errorlevel 1 (
     exit /B %ERRORLEVEL%
 )
 
+cl.exe /O2 /c /nologo /Wall "..\common\string.c"
+if errorlevel 1 (
+    popd
+    exit /B %ERRORLEVEL%
+)
+
 rc.exe /v /w /nologo "..\%1\%1.rc"
 if errorlevel 1 (
     popd
     exit /B %ERRORLEVEL%
 )
 
-cl.exe /O2 /nologo /Wall /Fe"%1.exe" ".\console.obj"  "..\%1\%1.res" "..\%1\%1.c"
+cl.exe /O2 /nologo /Wall /Fe"%1.exe" ".\console.obj" ".\string.obj" "..\%1\%1.res" "..\%1\%1.c"
 if errorlevel 1 (
     popd
     exit /B %ERRORLEVEL%
