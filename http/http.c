@@ -5,7 +5,6 @@
 
 #include <windows.h>
 #include <winhttp.h>
-#include <tchar.h>
 #include "../common/console.h"
 #include "../common/string.h"
 
@@ -14,7 +13,11 @@ int Get(HANDLE, LPCTSTR);
 #define METHOD_NONE 0
 #define METHOD_GET 1
 
-int _tmain(int argc, TCHAR *argv[])
+#ifdef UNICODE
+int wmain(int argc, TCHAR *argv[])
+#else
+int main(int argc, TCHAR *argv[])
+#endif
 {
     LPTSTR url = NULL;
     int method = METHOD_NONE;
@@ -26,34 +29,34 @@ int _tmain(int argc, TCHAR *argv[])
         {
             if (url != NULL)
             {
-                WriteStdErr(_T("Error: can not specify URL twice and more '%s'\n"), *arg);
+                WriteStdErr(TEXT("Error: can not specify URL twice and more '%s'\n"), *arg);
                 return 1;
             }
 
             url = *arg;
         }
-        else if (!lstrcmp(*arg, _T("-X")))
+        else if (!lstrcmp(*arg, TEXT("-X")))
         {
             if (method != METHOD_NONE)
             {
-                WriteStdErr(_T("Error: can not specify HTTP method twice and more '%s'\n"), *arg);
+                WriteStdErr(TEXT("Error: can not specify HTTP method twice and more '%s'\n"), *arg);
                 return 1;
             }
 
             arg += 1;
-            if (!lstrcmpi(*arg, _T("GET")))
+            if (!lstrcmpi(*arg, TEXT("GET")))
             {
                 method = METHOD_GET;
             }
             else
             {
-                WriteStdErr(_T("Error: unknown HTTP method '%s'\n"), *arg);
+                WriteStdErr(TEXT("Error: unknown HTTP method '%s'\n"), *arg);
                 return 1;
             }
         }
         else
         {
-            WriteStdErr(_T("Error: unknown option '%s'\n"), *arg);
+            WriteStdErr(TEXT("Error: unknown option '%s'\n"), *arg);
             return 1;
         }
     }
@@ -188,13 +191,13 @@ int Get(HANDLE heap, LPCTSTR urlString)
                 goto END;
             }
 
-            WriteStdOut(_T("%s"), data);
+            WriteStdOut(TEXT("%s"), data);
 
             HeapFree(heap, 0, data);
         }
     } while (received > 0);
 
-    WriteStdOut(_T("\n"));
+    WriteStdOut(TEXT("\n"));
 
 END:
     if (NULL != request)

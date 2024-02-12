@@ -8,7 +8,6 @@
 #include <initguid.h>
 #include <devpropdef.h>
 #include <devpkey.h>
-#include <tchar.h>
 #include "../common/console.h"
 #include "../common/string.h"
 
@@ -24,11 +23,11 @@ BOOL WritePropValue(HANDLE, DEVPROPTYPE, PBYTE, ULONG);
 #define KeyToName(prop)                                                                                                \
     if (IsEqualDevPropKey(*key, (DEVPKEY_##prop)))                                                                     \
     {                                                                                                                  \
-        return _T((#prop));                                                                                            \
+        return TEXT((#prop));                                                                                          \
     }
 
 #define NameToKey(name, prop)                                                                                          \
-    if (!lstrcmp(name, _T(#prop)))                                                                                     \
+    if (!lstrcmp(name, TEXT(#prop)))                                                                                   \
     {                                                                                                                  \
         return &(DEVPKEY_##prop);                                                                                      \
     }
@@ -39,7 +38,11 @@ BOOL WritePropValue(HANDLE, DEVPROPTYPE, PBYTE, ULONG);
 #define MODE_PROPLIST 3
 #define MODE_PROPVALUE 4
 
-int _tmain(int argc, TCHAR *argv[])
+#ifdef UNICODE
+int wmain(int argc, TCHAR *argv[])
+#else
+int main(int argc, TCHAR *argv[])
+#endif
 {
     int mode = MODE_NONE;
     LPTSTR filter = NULL;
@@ -53,12 +56,12 @@ int _tmain(int argc, TCHAR *argv[])
         {
             continue;
         }
-        else if (!lstrcmp(*arg, _T("-e")))
+        else if (!lstrcmp(*arg, TEXT("-e")))
         {
             mode = MODE_ENUMERATORS;
             break;
         }
-        else if (!lstrcmp(*arg, _T("-l")))
+        else if (!lstrcmp(*arg, TEXT("-l")))
         {
             arg += 1;
             filter = *arg;
@@ -66,7 +69,7 @@ int _tmain(int argc, TCHAR *argv[])
             mode = MODE_IDLIST;
             break;
         }
-        else if (!lstrcmp(*arg, _T("-p")))
+        else if (!lstrcmp(*arg, TEXT("-p")))
         {
             arg += 1;
             id = *arg;
@@ -74,7 +77,7 @@ int _tmain(int argc, TCHAR *argv[])
             mode = MODE_PROPLIST;
             break;
         }
-        else if (!lstrcmp(*arg, _T("-v")))
+        else if (!lstrcmp(*arg, TEXT("-v")))
         {
             arg += 1;
             id = *arg;
@@ -87,7 +90,7 @@ int _tmain(int argc, TCHAR *argv[])
         }
         else
         {
-            WriteStdErr(_T("Error: unknown option '%s'\n"), *arg);
+            WriteStdErr(TEXT("Error: unknown option '%s'\n"), *arg);
             return 1;
         }
     }
@@ -152,7 +155,7 @@ int EnumerateEnumerators(HANDLE heap)
             return -3;
         }
 
-        if (!WriteStdOut(_T("%s\n"), buffer))
+        if (!WriteStdOut(TEXT("%s\n"), buffer))
         {
             WriteLastSystemError();
             HeapFree(heap, 0, buffer);
@@ -195,7 +198,7 @@ int EnumerateIdList(HANDLE heap, LPTSTR filter)
 
     for (DEVINSTID id = buffer; *id != 0; id += lstrlen(id) + 1)
     {
-        if (!WriteStdOut(_T("%s\n"), id))
+        if (!WriteStdOut(TEXT("%s\n"), id))
         {
             WriteLastSystemError();
             HeapFree(heap, 0, buffer);
@@ -244,7 +247,7 @@ int EnumeratePropList(HANDLE heap, LPTSTR id)
 
     for (ULONG i = 0; i < size; i++)
     {
-        WriteStdOut(_T("%s\n"), GetPropName(propKeys + i));
+        WriteStdOut(TEXT("%s\n"), GetPropName(propKeys + i));
     }
 
     HeapFree(heap, 0, propKeys);
@@ -265,7 +268,7 @@ int GetPropValue(HANDLE heap, LPTSTR id, LPTSTR prop)
     const DEVPROPKEY *key = GetPropKey(prop);
     if (key == NULL)
     {
-        WriteStdErr(_T("Not found property key '%s'\n"), prop);
+        WriteStdErr(TEXT("Not found property key '%s'\n"), prop);
         HeapFree(heap, 0, devNode);
         return -2;
     }
@@ -725,7 +728,7 @@ TCHAR *GetPropName(PDEVPROPKEY key)
     KeyToName(DeviceContainer_InstallInProgress);
     KeyToName(DevQuery_ObjectType);
 
-    return _T("Unknown");
+    return TEXT("Unknown");
 }
 
 BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
@@ -734,38 +737,38 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
     {
     case DEVPROP_TYPE_EMPTY:
     case DEVPROP_TYPE_NULL:
-        WriteStdOut(_T("\n"));
+        WriteStdOut(TEXT("\n"));
         break;
     case DEVPROP_TYPE_SBYTE:
     case DEVPROP_TYPE_BYTE:
-        WriteStdOut(_T("0x%02x\n"), value[0]);
+        WriteStdOut(TEXT("0x%02x\n"), value[0]);
         break;
     case DEVPROP_TYPE_INT16:
-        WriteStdOut(_T("%d\n"), *(SHORT *)value);
+        WriteStdOut(TEXT("%d\n"), *(SHORT *)value);
         break;
     case DEVPROP_TYPE_UINT16:
-        WriteStdOut(_T("%u\n"), *(USHORT *)value);
+        WriteStdOut(TEXT("%u\n"), *(USHORT *)value);
         break;
     case DEVPROP_TYPE_INT32:
-        WriteStdOut(_T("%ld\n"), *(LONG *)value);
+        WriteStdOut(TEXT("%ld\n"), *(LONG *)value);
         break;
     case DEVPROP_TYPE_UINT32:
-        WriteStdOut(_T("%lu\n"), *(ULONG *)value);
+        WriteStdOut(TEXT("%lu\n"), *(ULONG *)value);
         break;
     case DEVPROP_TYPE_INT64:
-        WriteStdOut(_T("%lld\n"), *(LONG64 *)value);
+        WriteStdOut(TEXT("%lld\n"), *(LONG64 *)value);
         break;
     case DEVPROP_TYPE_UINT64:
-        WriteStdOut(_T("%llu\n"), *(ULONG64 *)value);
+        WriteStdOut(TEXT("%llu\n"), *(ULONG64 *)value);
         break;
     case DEVPROP_TYPE_FLOAT:
-        WriteStdOut(_T("%f\n"), *(FLOAT *)value);
+        WriteStdOut(TEXT("%f\n"), *(FLOAT *)value);
         break;
     case DEVPROP_TYPE_DOUBLE:
-        WriteStdOut(_T("%lf\n"), *(DOUBLE *)value);
+        WriteStdOut(TEXT("%lf\n"), *(DOUBLE *)value);
         break;
     case DEVPROP_TYPE_DECIMAL:
-        WriteStdErr(_T("Not support property type '%ld'\n"), type);
+        WriteStdErr(TEXT("Not support property type '%ld'\n"), type);
         break;
     case DEVPROP_TYPE_GUID:
         GUID id = *(GUID *)value;
@@ -773,10 +776,10 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
                     id.Data4[1], id.Data4[2], id.Data4[3], id.Data4[4], id.Data4[5], id.Data4[6], id.Data4[7]);
         break;
     case DEVPROP_TYPE_CURRENCY:
-        WriteStdErr(_T("Not support property type '%ld'\n"), type);
+        WriteStdErr(TEXT("Not support property type '%ld'\n"), type);
         break;
     case DEVPROP_TYPE_DATE:
-        WriteStdOut(_T("%lf\n"), *(DATE *)value);
+        WriteStdOut(TEXT("%lf\n"), *(DATE *)value);
         break;
     case DEVPROP_TYPE_FILETIME:
         SYSTEMTIME sysTime = {0};
@@ -788,7 +791,7 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
                     sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
         break;
     case DEVPROP_TYPE_BOOLEAN:
-        WriteStdOut(_T("%u\n"), *(BYTE *)value);
+        WriteStdOut(TEXT("%u\n"), *(BYTE *)value);
         break;
     case DEVPROP_TYPE_STRING:
         LPSTR mb = NULL;
@@ -797,7 +800,7 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
             return FALSE;
         }
 
-        WriteStdOut(_T("%s\n"), mb);
+        WriteStdOut(TEXT("%s\n"), mb);
 
         HeapFree(heap, 0, mb);
         break;
@@ -808,26 +811,26 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
     case DEVPROP_TYPE_SECURITY_DESCRIPTOR_STRING:
     case DEVPROP_TYPE_DEVPROPKEY:
     case DEVPROP_TYPE_DEVPROPTYPE:
-        WriteStdErr(_T("Not support property type '%ld'\n"), type);
+        WriteStdErr(TEXT("Not support property type '%ld'\n"), type);
         break;
     case DEVPROP_TYPE_BINARY:
         for (ULONG i = 0; i < size; i++)
         {
-            WriteStdOut(_T("0x%02x"), value[i]);
+            WriteStdOut(TEXT("0x%02x"), value[i]);
         }
-        WriteStdOut(_T("\n"));
+        WriteStdOut(TEXT("\n"));
         break;
     case DEVPROP_TYPE_ERROR:
-        WriteStdOut(_T("%ld\n"), *(LONG *)value);
+        WriteStdOut(TEXT("%ld\n"), *(LONG *)value);
         break;
     case DEVPROP_TYPE_NTSTATUS:
-        WriteStdOut(_T("%ld\n"), *(LONG *)value);
+        WriteStdOut(TEXT("%ld\n"), *(LONG *)value);
         break;
     case DEVPROP_TYPE_STRING_INDIRECT:
         // TODO:
         break;
     default:
-        WriteStdErr(_T("Not found property type '%ld'\n"), type);
+        WriteStdErr(TEXT("Not found property type '%ld'\n"), type);
         break;
     }
 

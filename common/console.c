@@ -3,7 +3,6 @@
 
 #include <windows.h>
 #include <strsafe.h>
-#include <tchar.h>
 #include "console.h"
 
 #define BUF_SIZE 16384
@@ -40,11 +39,11 @@ BOOL WriteSystemError(DWORD code)
 
     if (!FormatMessage(flags, NULL, code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&msg, 0, NULL))
     {
-        WriteStdErr(_T("Error: %u\n"), code);
+        WriteStdErr(TEXT("Error: %u\n"), code);
         return FALSE;
     }
 
-    BOOL ret = WriteStdErr(_T("%u: %s"), code, msg);
+    BOOL ret = WriteStdErr(TEXT("%u: %s"), code, msg);
 
     LocalFree(msg);
 
@@ -60,7 +59,7 @@ BOOL WriteOutput(DWORD fd, LPCTSTR format, va_list args)
     HRESULT ret = StringCbVPrintf(msg, BUF_SIZE * sizeof(TCHAR), format, args);
     if (FAILED(ret))
     {
-        WriteStdErr(_T("Error: %u\n"), ret);
+        WriteStdErr(TEXT("Error: %u\n"), ret);
         return FALSE;
     }
 
