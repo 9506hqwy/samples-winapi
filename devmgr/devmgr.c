@@ -1,6 +1,4 @@
 #pragma comment(lib, "Cfgmgr32")
-#pragma comment(lib, "Shell32")
-#pragma comment(lib, "Shlwapi")
 
 #pragma warning(once : 4710)
 #pragma warning(once : 4711)
@@ -10,8 +8,6 @@
 #include <initguid.h>
 #include <devpropdef.h>
 #include <devpkey.h>
-#include <shellapi.h>
-#include <shlwapi.h>
 #include <tchar.h>
 #include "../common/console.h"
 #include "../common/string.h"
@@ -32,7 +28,7 @@ BOOL WritePropValue(HANDLE, DEVPROPTYPE, PBYTE, ULONG);
     }
 
 #define NameToKey(name, prop)                                                                                          \
-    if (!StrCmp(name, _T(#prop)))                                                                                      \
+    if (!lstrcmp(name, _T(#prop)))                                                                                     \
     {                                                                                                                  \
         return &(DEVPKEY_##prop);                                                                                      \
     }
@@ -57,12 +53,12 @@ int _tmain(int argc, TCHAR *argv[])
         {
             continue;
         }
-        else if (!StrCmp(*arg, _T("-e")))
+        else if (!lstrcmp(*arg, _T("-e")))
         {
             mode = MODE_ENUMERATORS;
             break;
         }
-        else if (!StrCmp(*arg, _T("-l")))
+        else if (!lstrcmp(*arg, _T("-l")))
         {
             arg += 1;
             filter = *arg;
@@ -70,7 +66,7 @@ int _tmain(int argc, TCHAR *argv[])
             mode = MODE_IDLIST;
             break;
         }
-        else if (!StrCmp(*arg, _T("-p")))
+        else if (!lstrcmp(*arg, _T("-p")))
         {
             arg += 1;
             id = *arg;
@@ -78,7 +74,7 @@ int _tmain(int argc, TCHAR *argv[])
             mode = MODE_PROPLIST;
             break;
         }
-        else if (!StrCmp(*arg, _T("-v")))
+        else if (!lstrcmp(*arg, _T("-v")))
         {
             arg += 1;
             id = *arg;

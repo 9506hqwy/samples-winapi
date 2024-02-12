@@ -1,12 +1,10 @@
 #pragma comment(lib, "Crypt32")
-#pragma comment(lib, "Shell32")
 #pragma comment(lib, "Shlwapi")
 
 #pragma warning(once : 4710)
 #pragma warning(once : 4711)
 
 #include <windows.h>
-#include <shellapi.h>
 #include <shlwapi.h>
 #include <wincrypt.h>
 #include "../common/console.h"
@@ -32,11 +30,11 @@ int main(int argc, char *argv[])
         {
             break;
         }
-        else if (!StrCmpA(*arg, "-d"))
+        else if (!lstrcmp(*arg, "-d"))
         {
             decode = TRUE;
         }
-        else if (!StrCmpA(*arg, "-w"))
+        else if (!lstrcmp(*arg, "-w"))
         {
             arg += 1;
             if (!StrToIntExA(*arg, STIF_DEFAULT, &width) || width < 0)
