@@ -4,10 +4,18 @@
 #include <windows.h>
 #include <strsafe.h>
 #include "console.h"
+#include "string.h"
 
 #define BUF_SIZE 16384
 
-BOOL WriteOutput(DWORD, LPCTSTR, va_list);
+BOOL WriteOutputA(DWORD, LPCSTR, va_list);
+BOOL WriteOutputW(DWORD, LPCWSTR, va_list);
+
+#ifdef UNICODE
+#define WriteOutput WriteOutputW
+#else
+#define WriteOutput WriteOutputA
+#endif
 
 BOOL WriteLastSystemError(void)
 {
@@ -23,11 +31,20 @@ BOOL WriteStdErr(LPCTSTR format, ...)
     return ret;
 }
 
-BOOL WriteStdOut(LPCTSTR format, ...)
+BOOL WriteStdOutA(LPCSTR format, ...)
 {
     va_list args = NULL;
     va_start(args, format);
-    BOOL ret = WriteOutput(STD_OUTPUT_HANDLE, format, args);
+    BOOL ret = WriteOutputA(STD_OUTPUT_HANDLE, format, args);
+    va_end(args);
+    return ret;
+}
+
+BOOL WriteStdOutW(LPCWSTR format, ...)
+{
+    va_list args = NULL;
+    va_start(args, format);
+    BOOL ret = WriteOutputW(STD_OUTPUT_HANDLE, format, args);
     va_end(args);
     return ret;
 }
@@ -52,11 +69,11 @@ BOOL WriteSystemError(DWORD code)
 
 // -----------------------------------------------------------------------------------------------
 
-BOOL WriteOutput(DWORD fd, LPCTSTR format, va_list args)
+BOOL WriteOutputA(DWORD fd, LPCSTR format, va_list args)
 {
-    TCHAR msg[BUF_SIZE] = {0};
+    CHAR msg[BUF_SIZE] = {0};
 
-    HRESULT ret = StringCbVPrintf(msg, BUF_SIZE * sizeof(TCHAR), format, args);
+    HRESULT ret = StringCbVPrintfA(msg, BUF_SIZE * sizeof(CHAR), format, args);
     if (FAILED(ret))
     {
         WriteStdErr(TEXT("Error: %u\n"), ret);
@@ -65,5 +82,31 @@ BOOL WriteOutput(DWORD fd, LPCTSTR format, va_list args)
 
     HANDLE handle = GetStdHandle(fd);
     DWORD written = 0;
-    return WriteFile(handle, msg, lstrlen(msg) * sizeof(TCHAR), &written, NULL);
+    return WriteFile(handle, msg, lstrlenA(msg) * sizeof(CHAR), &written, NULL);
+}
+
+BOOL WriteOutputW(DWORD fd, LPCWSTR format, va_list args)
+{
+    WCHAR msg[BUF_SIZE] = {0};
+
+    HRESULT ret = StringCbVPrintfW(msg, BUF_SIZE * sizeof(WCHAR), format, args);
+    if (FAILED(ret))
+    {
+        WriteStdErr(TEXT("Error: %u\n"), ret);
+        return FALSE;
+    }
+
+    LPSTR msgA = NULL;
+    if (!WideToMB(GetProcessHeap(), msg, &msgA))
+    {
+        WriteLastSystemError();
+        return FALSE;
+    }
+
+    HANDLE handle = GetStdHandle(fd);
+    DWORD written = 0;
+    BOOL retA = WriteFile(handle, msgA, lstrlenA(msgA) * sizeof(CHAR), &written, NULL);
+    HeapFree(GetProcessHeap(), 0, msgA);
+
+    return retA;
 }

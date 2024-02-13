@@ -89,12 +89,16 @@ int Get(HANDLE heap, LPCTSTR urlString)
     HINTERNET connect = NULL;
     HINTERNET request = NULL;
 
+#ifdef UNICODE
+    wUrlString = (LPWSTR)urlString;
+#else
     if (!MBToWide(heap, urlString, &wUrlString))
     {
         WriteLastSystemError();
         exitCode = -1;
         goto END;
     }
+#endif
 
     url.dwStructSize = sizeof(URL_COMPONENTS);
     url.dwSchemeLength = (DWORD)-1;
@@ -191,13 +195,13 @@ int Get(HANDLE heap, LPCTSTR urlString)
                 goto END;
             }
 
-            WriteStdOut(TEXT("%s"), data);
+            WriteStdOutA("%s", data);
 
             HeapFree(heap, 0, data);
         }
     } while (received > 0);
 
-    WriteStdOut(TEXT("\n"));
+    WriteStdOutA("\n");
 
 END:
     if (NULL != request)
@@ -225,10 +229,12 @@ END:
         HeapFree(heap, 0, urlPath);
     }
 
+#ifndef UNICODE
     if (NULL != wUrlString)
     {
         HeapFree(heap, 0, wUrlString);
     }
+#endif
 
     return exitCode;
 }

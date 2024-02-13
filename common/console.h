@@ -5,7 +5,15 @@
 
 BOOL WriteLastSystemError(void);
 BOOL WriteStdErr(LPCTSTR, ...);
-BOOL WriteStdOut(LPCTSTR, ...);
+BOOL WriteStdOutA(LPCSTR, ...);
+BOOL WriteStdOutW(LPCWSTR, ...);
 BOOL WriteSystemError(DWORD);
+
+
+#ifdef UNICODE
+#define WriteStdOut WriteStdOutW
+#else
+#define WriteStdOut WriteStdOutA
+#endif
 
 #endif

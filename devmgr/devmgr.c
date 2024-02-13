@@ -23,7 +23,7 @@ BOOL WritePropValue(HANDLE, DEVPROPTYPE, PBYTE, ULONG);
 #define KeyToName(prop)                                                                                                \
     if (IsEqualDevPropKey(*key, (DEVPKEY_##prop)))                                                                     \
     {                                                                                                                  \
-        return TEXT((#prop));                                                                                          \
+        return TEXT(#prop);                                                                                            \
     }
 
 #define NameToKey(name, prop)                                                                                          \
@@ -137,6 +137,7 @@ int EnumerateEnumerators(HANDLE heap)
         }
         else if (CR_BUFFER_SMALL != ret)
         {
+            // occur `CR_INVALID_DATA` when /DUNICODE is on.
             WriteSystemError(CM_MapCrToWin32Err(ret, ERROR_INVALID_DATA));
             return -1;
         }
@@ -772,8 +773,9 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
         break;
     case DEVPROP_TYPE_GUID:
         GUID id = *(GUID *)value;
-        WriteStdOut("%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n", id.Data1, id.Data2, id.Data3, id.Data4[0],
-                    id.Data4[1], id.Data4[2], id.Data4[3], id.Data4[4], id.Data4[5], id.Data4[6], id.Data4[7]);
+        WriteStdOut(TEXT("%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n"), id.Data1, id.Data2, id.Data3,
+                    id.Data4[0], id.Data4[1], id.Data4[2], id.Data4[3], id.Data4[4], id.Data4[5], id.Data4[6],
+                    id.Data4[7]);
         break;
     case DEVPROP_TYPE_CURRENCY:
         WriteStdErr(TEXT("Not support property type '%ld'\n"), type);
@@ -787,7 +789,7 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
         {
             return FALSE;
         }
-        WriteStdOut("%u/%u/%u %u:%u:%u.%u\n", sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour,
+        WriteStdOut(TEXT("%u/%u/%u %u:%u:%u.%u\n"), sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour,
                     sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
         break;
     case DEVPROP_TYPE_BOOLEAN:
