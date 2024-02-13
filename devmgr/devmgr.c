@@ -3,6 +3,8 @@
 #pragma warning(once : 4710)
 #pragma warning(once : 4711)
 
+#define WIN32_LEAN_AND_MEAN
+
 #include <windows.h>
 #include <cfgmgr32.h>
 #include <initguid.h>
@@ -766,7 +768,7 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
         WriteStdOut(TEXT("%f\n"), *(FLOAT *)value);
         break;
     case DEVPROP_TYPE_DOUBLE:
-        WriteStdOut(TEXT("%lf\n"), *(DOUBLE *)value);
+        WriteStdOut(TEXT("%lf\n"), *(double *)value);
         break;
     case DEVPROP_TYPE_DECIMAL:
         WriteStdErr(TEXT("Not support property type '%ld'\n"), type);
@@ -781,7 +783,7 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
         WriteStdErr(TEXT("Not support property type '%ld'\n"), type);
         break;
     case DEVPROP_TYPE_DATE:
-        WriteStdOut(TEXT("%lf\n"), *(DATE *)value);
+        WriteStdOut(TEXT("%lf\n"), *(double *)value);
         break;
     case DEVPROP_TYPE_FILETIME:
         SYSTEMTIME sysTime = {0};

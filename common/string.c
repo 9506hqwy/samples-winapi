@@ -1,6 +1,8 @@
 #pragma warning(once : 4710)
 #pragma warning(once : 4711)
 
+#define WIN32_LEAN_AND_MEAN
+
 #include <windows.h>
 #include <strsafe.h>
 #include "string.h"
