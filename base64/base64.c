@@ -11,43 +11,47 @@
 #include <wincrypt.h>
 #include "../common/console.h"
 
-int DecodeB64(LPSTR);
+int DecodeB64(LPTSTR);
 BOOL DecodeString(HANDLE, LPCSTR, DWORD, BYTE **, DWORD *);
-int EncodeB64(LPSTR, int);
+int EncodeB64(LPTSTR, int);
 BOOL EncodeString(HANDLE, BYTE *, DWORD, LPSTR *, DWORD *);
 BOOL GetFileContent(HANDLE, HANDLE, BYTE **, SIZE_T *);
 BOOL RemoveLF(BYTE *, SIZE_T *);
 BOOL WrapWrite(BYTE *, DWORD, int);
 
-int main(int argc, char *argv[])
+#ifdef UNICODE
+int wmain(int argc, TCHAR *argv[])
+#else
+int main(int argc, TCHAR *argv[])
+#endif
 {
     BOOL decode = FALSE;
     int width = 76;
-    LPSTR filePath = NULL;
+    LPTSTR filePath = NULL;
 
-    LPSTR *arg = NULL;
+    LPTSTR *arg = NULL;
     for (arg = argv + 1; (arg - argv) < argc; arg += 1)
     {
         if (*arg[0] != '-')
         {
             break;
         }
-        else if (!lstrcmp(*arg, "-d"))
+        else if (!lstrcmp(*arg, TEXT("-d")))
         {
             decode = TRUE;
         }
-        else if (!lstrcmp(*arg, "-w"))
+        else if (!lstrcmp(*arg, TEXT("-w")))
         {
             arg += 1;
-            if (!StrToIntExA(*arg, STIF_DEFAULT, &width) || width < 0)
+            if (!StrToIntEx(*arg, STIF_DEFAULT, &width) || width < 0)
             {
-                WriteStdErr("Error: invalid value -w '%s'\n", *arg);
+                WriteStdErr(TEXT("Error: invalid value -w '%s'\n"), *arg);
                 return 1;
             }
         }
         else
         {
-            WriteStdErr("Error: unknown option '%s'\n", *arg);
+            WriteStdErr(TEXT("Error: unknown option '%s'\n"), *arg);
             return 1;
         }
     }
@@ -60,7 +64,7 @@ int main(int argc, char *argv[])
     return decode ? DecodeB64(filePath) : EncodeB64(filePath, width);
 }
 
-int DecodeB64(LPSTR filePath)
+int DecodeB64(LPTSTR filePath)
 {
     int exitCode = 0;
     HANDLE fp = GetStdHandle(STD_INPUT_HANDLE);
@@ -70,7 +74,7 @@ int DecodeB64(LPSTR filePath)
 
     if (filePath != NULL)
     {
-        fp = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        fp = CreateFile(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (fp == INVALID_HANDLE_VALUE)
         {
             WriteLastSystemError();
@@ -131,7 +135,7 @@ END:
     return exitCode;
 }
 
-int EncodeB64(LPSTR filePath, int width)
+int EncodeB64(LPTSTR filePath, int width)
 {
     int exitCode = 0;
     HANDLE fp = GetStdHandle(STD_INPUT_HANDLE);
@@ -141,7 +145,7 @@ int EncodeB64(LPSTR filePath, int width)
 
     if (filePath != NULL)
     {
-        fp = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        fp = CreateFile(filePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (fp == INVALID_HANDLE_VALUE)
         {
             WriteLastSystemError();
