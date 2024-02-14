@@ -304,7 +304,7 @@ BOOL RemoveLF(BYTE *content, SIZE_T *contentLength)
 {
     BYTE *lf = NULL;
 
-    while (lf = (BYTE *)StrChrA((PCSTR)content, '\n'))
+    while ((lf = (BYTE *)StrChrA((PCSTR)content, '\n')) != NULL)
     {
         BYTE *next = lf + 1;
         SIZE_T restLen = (*contentLength) - (next - content) + sizeof(BYTE); // with null terminate.
