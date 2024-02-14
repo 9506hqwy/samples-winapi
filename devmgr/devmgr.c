@@ -2,6 +2,7 @@
 
 #pragma warning(once : 4710)
 #pragma warning(once : 4711)
+#pragma warning(disable : 5045)
 
 #define WIN32_LEAN_AND_MEAN
 
