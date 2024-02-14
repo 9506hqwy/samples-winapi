@@ -1,6 +1,7 @@
 #pragma comment(lib, "Crypt32")
 #pragma comment(lib, "Shlwapi")
 
+#pragma warning(disable : 4464)
 #pragma warning(once : 4710)
 #pragma warning(once : 4711)
 #pragma warning(disable : 5045)
