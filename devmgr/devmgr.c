@@ -800,6 +800,7 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
         WriteStdOut(TEXT("%u\n"), *(BYTE *)value);
         break;
     case DEVPROP_TYPE_STRING:
+    case DEVPROP_TYPE_STRING_INDIRECT:
         LPSTR mb = NULL;
         if (!WideToMB(heap, (LPCWCH)value, &mb))
         {
@@ -811,7 +812,18 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
         HeapFree(heap, 0, mb);
         break;
     case DEVPROP_TYPE_STRING_LIST:
-        // TODO:
+        for (LPCWCH cur = (LPCWCH)value; *cur != 0; cur += (lstrlenW(cur) + 1))
+        {
+            LPSTR mbl = NULL;
+            if (!WideToMB(heap, cur, &mbl))
+            {
+                return FALSE;
+            }
+
+            WriteStdOut(TEXT("%s\n"), mbl);
+
+            HeapFree(heap, 0, mbl);
+        }
         break;
     case DEVPROP_TYPE_SECURITY_DESCRIPTOR:
     case DEVPROP_TYPE_SECURITY_DESCRIPTOR_STRING:
@@ -831,9 +843,6 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
         break;
     case DEVPROP_TYPE_NTSTATUS:
         WriteStdOut(TEXT("%ld\n"), *(LONG *)value);
-        break;
-    case DEVPROP_TYPE_STRING_INDIRECT:
-        // TODO:
         break;
     default:
         WriteStdErr(TEXT("Not found property type '%ld'\n"), type);
