@@ -132,6 +132,9 @@ int EnumerateEnumerators(HANDLE heap)
     ULONG index = 0;
     while (TRUE)
     {
+#ifdef UNICODE
+        ULONG length = MAX_DEVICE_ID_LEN;
+#else
         TCHAR zero = 0;
         ULONG length = 0;
         ret = CM_Enumerate_Enumerators(index, &zero, &length, 0);
@@ -145,6 +148,7 @@ int EnumerateEnumerators(HANDLE heap)
             WriteSystemError(CM_MapCrToWin32Err(ret, ERROR_INVALID_DATA));
             return -1;
         }
+#endif
 
         LPTSTR buffer = (LPTSTR)HeapAlloc(heap, HEAP_ZERO_MEMORY, length * sizeof(TCHAR));
         if (buffer == NULL)
@@ -153,7 +157,12 @@ int EnumerateEnumerators(HANDLE heap)
         }
 
         ret = CM_Enumerate_Enumerators(index, buffer, &length, 0);
-        if (CR_SUCCESS != ret)
+        if (CR_NO_SUCH_VALUE == ret)
+        {
+            HeapFree(heap, 0, buffer);
+            break;
+        }
+        else if (CR_SUCCESS != ret)
         {
             WriteSystemError(CM_MapCrToWin32Err(ret, ERROR_INVALID_DATA));
             HeapFree(heap, 0, buffer);
