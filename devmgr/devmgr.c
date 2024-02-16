@@ -807,7 +807,7 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
             return FALSE;
         }
 
-        WriteStdOut(TEXT("%s\n"), mb);
+        WriteStdOutA("%s\n", mb);
 
         HeapFree(heap, 0, mb);
         break;
@@ -820,7 +820,7 @@ BOOL WritePropValue(HANDLE heap, DEVPROPTYPE type, PBYTE value, ULONG size)
                 return FALSE;
             }
 
-            WriteStdOut(TEXT("%s\n"), mbl);
+            WriteStdOutA("%s\n", mbl);
 
             HeapFree(heap, 0, mbl);
         }
