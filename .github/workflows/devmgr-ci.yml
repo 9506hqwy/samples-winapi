@@ -1,14 +1,14 @@
-name: http
+name: devmgr-ci
 
 on:
   push:
     branches: [ main ]
     tags-ignore: [ '**' ]
-    paths: [ 'http/**' ]
+    paths: [ 'devmgr/**' ]
   workflow_dispatch:
 
 env:
-  BIN_NAME: http
+  BIN_NAME: devmgr
 
 jobs:
   build:

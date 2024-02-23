@@ -1,14 +1,14 @@
-name: base64
+name: cecho-ci
 
 on:
   push:
     branches: [ main ]
     tags-ignore: [ '**' ]
-    paths: [ 'base64/**' ]
+    paths: [ 'cecho/**' ]
   workflow_dispatch:
 
 env:
-  BIN_NAME: base64
+  BIN_NAME: cecho
 
 jobs:
   build:
