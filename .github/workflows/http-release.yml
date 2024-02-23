@@ -1,0 +1,38 @@
+name: http-release
+
+on:
+  push:
+    tags: [ 'http/**' ]
+
+env:
+  BIN_NAME: http
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build
+      shell: cmd
+      run: |
+        SET PATH=%PATH%;C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64
+        CALL "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        .\build.bat %BIN_NAME%
+
+    - name: Create Artifacts
+      run: |
+        New-Item -Path '.\artifacts' -ItemType 'Directory' -Force
+        $exe = Get-Item .\build\${env:BIN_NAME}.exe
+        $VERSION = $exe.VersionInfo.FileVersionRaw.ToString()
+        Compress-Archive -Path .\build\${env:BIN_NAME}.exe -DestinationPath ".\artifacts\${env:BIN_NAME}-${VERSION}.zip"
+
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $name, $version = (${env:GITHUB_REF_NAME}).Split('/')
+        gh config set prompt disabled
+        gh release create "${env:GITHUB_REF_NAME}" ".\artifacts\*" -t "${name}-v${version}" -d
