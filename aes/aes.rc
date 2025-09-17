@@ -1,0 +1,27 @@
+#include <windows.h>
+
+// https://learn.microsoft.com/ja-jp/windows/win32/menurc/versioninfo-resource
+
+VS_VERSION_INFO  VERSIONINFO
+FILEVERSION 0,1,0,0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", ""
+            VALUE "FileDescription", "Advanced Encryption Standard"
+            VALUE "FileVersion", ""
+            VALUE "InternalName", "aes.exe"
+            VALUE "LegalCopyright", "Copyright (c) 2024 9506hqwy"
+            VALUE "OriginalFilename", "aes.exe"
+            VALUE "ProductName", "AES 256 CBC PKCS#7"
+            VALUE "ProductVersion", "0.1.0"
+        END
+    END
+
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
